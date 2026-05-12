@@ -1,5 +1,5 @@
 //App.js:
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
@@ -11,9 +11,9 @@ import {
   TouchableOpacity,
   Image,
   FlatList,
+  Alert,
 } from 'react-native';
-import { db } from './config/config';
-import { ref, get, set } from 'firebase/database';
+import firebase from './config/config';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -91,7 +91,7 @@ const servicosMasculinos = [
     id: '1',
     nome: 'Corte de cabelo',
     descricao: 'Corte masculino moderno com acabamento na navalha',
-    preco: 'R$ 45,00',
+    preco: 'R$ 25,00',
     imagem:
       'https://tudoz.com.br/wp-content/uploads/2023/09/cortes-de-cabelo-masculino-1024x683.webp',
   },
@@ -99,7 +99,7 @@ const servicosMasculinos = [
     id: '2',
     nome: 'Barba',
     descricao: 'Modelagem e aparação da barba com toalha quente e navalha',
-    preco: 'R$ 35,00',
+    preco: 'R$ 15,00',
     imagem:
       'https://img.freepik.com/fotos-gratis/barba-de-corte-de-homem-bonito-em-um-salao-de-barbeiro_1303-20970.jpg',
   },
@@ -107,7 +107,7 @@ const servicosMasculinos = [
     id: '3',
     nome: 'Cabelo + Barba',
     descricao: 'Combo completo de corte e barba com desconto especial',
-    preco: 'R$ 70,00',
+    preco: 'R$ 40,00',
     imagem:
       'https://i.pinimg.com/originals/31/8f/23/318f236870cc70168b147c6e06c991a8.jpg',
   },
@@ -115,7 +115,7 @@ const servicosMasculinos = [
     id: '4',
     nome: 'Pintura e retoque de raiz',
     descricao: 'Cobertura de cabelos brancos com resultado natural',
-    preco: 'R$ 80,00',
+    preco: 'R$ 50,00',
     imagem:
       'https://i.pinimg.com/originals/a7/31/0a/a7310a3f3ca89e5bb8e4bb4e397f8ca6.jpg',
   },
@@ -397,78 +397,97 @@ function TelaHorario({ navigation, route, tema }) {
 }
 
 function TelaResultado({ navigation, route, tema }) {
-  // Recebe o dia e o horário selecionados nas telas anteriores
   const diaSelecionado = route.params?.diaSelecionado;
   const horarioSelecionado = route.params?.horarioSelecionado;
+  const [nomeUsuario, setNomeUsuario] = useState('');
+  const [senha, setSenha] = useState('');
+
+  async function confirmarAgendamento() {
+    if (nomeUsuario.trim() === '' || senha.trim() === '') {
+      Alert.alert('Erro', 'Digite seu nome e senha!');
+      return;
+    }
+    if (!diaSelecionado || !horarioSelecionado) {
+      Alert.alert('Erro', 'Dia ou horário não selecionados.');
+      return;
+    }
+
+    try {
+      const snapshot = await firebase.database().ref('cliente').once('value');
+      let usuarioEncontrado = false;
+      let clienteId = null;
+
+      if (snapshot.exists()) {
+        const clientes = snapshot.val();
+        for (let key in clientes) {
+          const cliente = clientes[key];
+          if (
+            cliente.nome.toLowerCase() === nomeUsuario.trim().toLowerCase() &&
+            cliente.senha === senha.trim()
+          ) {
+            usuarioEncontrado = true;
+            clienteId = key;
+            break;
+          }
+        }
+      }
+
+      if (!usuarioEncontrado) {
+        Alert.alert('Erro', 'Usuário não encontrado!');
+        return;
+      }
+
+      await firebase.database().ref('agendamentos').push({
+        clienteId: clienteId,
+        nomeCliente: nomeUsuario.trim(),
+        dia: diaSelecionado,
+        horario: horarioSelecionado,
+      });
+
+      Alert.alert('Sucesso', 'Agendamento confirmado!');
+      navigation.navigate('Home');
+    } catch (error) {
+      Alert.alert('Erro', 'Erro ao confirmar agendamento.');
+      console.log(error);
+    }
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: tema.fundo, padding: 20 }}>
-      <Text style={{ color: tema.texto, fontSize: 22, fontWeight: 'bold', marginBottom: 20 }}>
-        🎉 Resumo do agendamento
-      </Text>
-
-      {/* Mostra o dia e horário selecionados */}
-      <Text style={{ color: tema.texto, fontSize: 16, marginBottom: 8 }}>
-        📅 Dia: {diaSelecionado || 'Não selecionado'}
-      </Text>
-      <Text style={{ color: tema.texto, fontSize: 16, marginBottom: 30 }}>
-        🕐 Horário: {horarioSelecionado || 'Não selecionado'}
-      </Text>
-
-      {/* Se já tiver cadastro, mostra campos de login para confirmar */}
-      <Text style={{ color: tema.texto, fontSize: 16, fontWeight: 'bold', marginBottom: 10 }}>
-        Já tem cadastro? Entre para confirmar:
-      </Text>
+      <Text style={{ color: tema.texto, fontSize: 22, fontWeight: 'bold', marginBottom: 20 }}>🎉 Resumo</Text>
+      <Text style={{ color: tema.texto, fontSize: 16 }}>📅 Dia: {diaSelecionado || 'Não selecionado'}</Text>
+      <Text style={{ color: tema.texto, fontSize: 16, marginBottom: 30 }}>🕐 Horário: {horarioSelecionado || 'Não selecionado'}</Text>
       <TextInput
         placeholder="Nome"
         placeholderTextColor={tema.texto}
-        style={{ borderWidth: 1, borderColor: tema.texto, color: tema.texto, padding: 10, borderRadius: 8, marginBottom: 10 }}
+        value={nomeUsuario}
+        onChangeText={setNomeUsuario}
+        style={[styles.input, { borderColor: tema.texto, color: tema.texto }]}
       />
       <TextInput
         placeholder="Senha"
         placeholderTextColor={tema.texto}
         secureTextEntry
-        style={{ borderWidth: 1, borderColor: tema.texto, color: tema.texto, padding: 10, borderRadius: 8, marginBottom: 15 }}
+        value={senha}
+        onChangeText={setSenha}
+        style={[styles.input, { borderColor: tema.texto, color: tema.texto }]}
       />
       <TouchableOpacity
-        style={{ backgroundColor: tema.botao, padding: 12, borderRadius: 8, marginBottom: 20 }}
-        onPress={() => alert('Agendamento confirmado!')}
+        style={[styles.botaoConfirmar, { backgroundColor: tema.botao }]}
+        onPress={confirmarAgendamento}
       >
-        <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>Confirmar agendamento</Text>
+        <Text style={styles.textoBotaoConfirmar}>Confirmar agendamento</Text>
       </TouchableOpacity>
-
-      {/* Se não tiver cadastro, botão para cadastrar */}
-      <Text style={{ color: tema.texto, textAlign: 'center', marginBottom: 10 }}>Não tem cadastro?</Text>
       <TouchableOpacity
-        style={{ backgroundColor: '#9b59b6', padding: 12, borderRadius: 8 }}
+        style={[styles.botaoCadastrar, { backgroundColor: '#9b59b6', marginTop: 10 }]}
         onPress={() => navigation.navigate('Cadastrar')}
       >
-        <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>Fazer cadastro</Text>
+        <Text style={styles.textoBotaoCadastrar}>Fazer cadastro</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
-const agendaStyles = StyleSheet.create({
-  titulo: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    margin: 20,
-  },
-
-  card: {
-    padding: 15,
-    borderRadius: 10,
-    marginHorizontal: 20,
-    marginBottom: 15,
-    alignItems: 'center',
-  },
-
-  textoCard: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-});
 
 // ─────────────────────────────────────────
 // TELA AGENDAMENTO — TAB NAVIGATOR
@@ -503,14 +522,53 @@ function TelaAgendamento({ navigation, tema }) {
 
 // Tela do barbeiro — onde chegam os agendamentos feitos pelos clientes
 function TelaAdm({ navigation, tema }) {
+  const [agendamentos, setAgendamentos] = useState([]);
+
+  useEffect(() => {
+    const ref = firebase.database().ref('agendamentos');
+
+    ref.on('value', (snapshot) => {
+      if (snapshot.exists()) {
+        const dados = snapshot.val();
+        const lista = Object.keys(dados).map((key) => ({
+          id: key,
+          ...dados[key],
+        }));
+        setAgendamentos(lista);
+      } else {
+        setAgendamentos([]);
+      }
+    });
+
+    return () => ref.off('value');
+  }, []);
+
   return (
-    <View style={{ flex: 1, backgroundColor: tema.fundo, justifyContent: 'center', alignItems: 'center' }}>
-      <Text style={{ color: tema.texto, fontSize: 22, fontWeight: 'bold' }}>
-        Área do Barbeiro 💈
+    <View style={{ flex: 1, backgroundColor: tema.fundo, padding: 20 }}>
+      <Text style={{ color: tema.texto, fontSize: 22, fontWeight: 'bold', marginBottom: 20 }}>
+        💈 Agendamentos
       </Text>
-      <Text style={{ color: tema.texto, marginTop: 10 }}>
-        Aqui aparecerão os agendamentos dos clientes.
-      </Text>
+
+      {agendamentos.length === 0 ? (
+        <Text style={{ color: tema.texto }}>Nenhum agendamento ainda.</Text>
+      ) : (
+        <FlatList
+          data={agendamentos}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={{
+              backgroundColor: tema.botao,
+              padding: 15,
+              borderRadius: 10,
+              marginBottom: 12,
+            }}>
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>👤 {item.nomeCliente}</Text>
+              <Text style={{ color: '#fff' }}>📅 {item.dia}</Text>
+              <Text style={{ color: '#fff' }}>🕐 {item.horario}</Text>
+            </View>
+          )}
+        />
+      )}
     </View>
   );
 }
@@ -592,50 +650,27 @@ export default function App() {
 // ─────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  // Campos de input de texto
-  texto_input: {},
-  // Títulos
-  titulo: {},
-  // Card de serviço
-  card: {
-    marginHorizontal: 16,
-    marginVertical: 8,
-    borderRadius: 10,
-    backgroundColor: '#fff',
-    elevation: 3,
-    overflow: 'hidden',
-  },
-  // Imagem dentro do card
+  card: { marginHorizontal: 16, marginVertical: 8, borderRadius: 10, elevation: 3, overflow: 'hidden' },
   imagem: { width: '100%', height: 150 },
-  // Container das informações abaixo da imagem
   info: { padding: 12 },
-  // Nome do serviço
   nome: { fontSize: 16, fontWeight: 'bold' },
-  // Descrição do serviço
-  descricao: { fontSize: 13, color: '#666', marginTop: 4 },
-  // Preço do serviço
-  preco: { fontSize: 15, fontWeight: 'bold', color: '#2e7d32', marginTop: 8 },
-  // Botão de agendar na tela Geral
-  botaoAgendar: {
-    margin: 16,
-    padding: 12,
-    backgroundColor: '#2e7d32',
-    borderRadius: 8,
-  },
-  // Texto do botão de agendar
+  botaoAgendar: { margin: 16, padding: 12, backgroundColor: '#2e7d32', borderRadius: 8 },
   botaoAgendarTexto: { color: '#fff', textAlign: 'center', fontWeight: 'bold' },
-
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 16,
-    padding: 20,
-  },
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16, padding: 20 },
   tituloTema: { fontSize: 26, fontWeight: 'bold' },
-  info: { fontSize: 16 },
   btn: { padding: 12, borderRadius: 8, width: '80%', alignItems: 'center' },
   btnTxt: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+  input: { borderWidth: 1, padding: 10, borderRadius: 8, marginBottom: 10, fontSize: 16 },
+  botaoConfirmar: { padding: 12, borderRadius: 8 },
+  textoBotaoConfirmar: { color: '#fff', textAlign: 'center', fontWeight: 'bold', fontSize: 18 },
+  botaoCadastrar: { padding: 12, borderRadius: 8 },
+  textoBotaoCadastrar: { color: '#fff', textAlign: 'center', fontWeight: 'bold', fontSize: 18 },
+});
+//tela resultado
+const agendaStyles = StyleSheet.create({
+  titulo: { fontSize: 22, fontWeight: 'bold', margin: 20 },
+  card: { padding: 15, borderRadius: 10, marginHorizontal: 20, marginBottom: 15, alignItems: 'center' },
+  textoCard: { fontSize: 18, fontWeight: 'bold' },
 });
 //OBS:
 //O [] no final significa "roda só uma vez, quando o componente montar". Se deixasse uma variável dentro do [], rodaria toda vez que aquela variável mudasse.
