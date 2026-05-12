@@ -19,41 +19,13 @@ class Login extends React.Component {
     }
 
     try {
-      // ==============================
-      // 1️⃣ BUSCAR BARBEIROS (ADM)
-      // ==============================
-      const snapshotUsuarios = await firebase
-        .database()
-        .ref('usuarios')
-        .once('value');
-
-      if (snapshotUsuarios.exists()) {
-        const usuarios = snapshotUsuarios.val();
-
-        for (let key in usuarios) {
-          const user = usuarios[key];
-
-          if (
-            user.nome.toLowerCase() === nome &&
-            user.senha === senha
-          ) {
-            alert('Login BARBEIRO realizado!');
-            this.props.navigation.navigate('Barbeiro');
-            return;
-          }
-        }
-      }
-
-      // ==============================
-      // 2️⃣ BUSCAR CLIENTES
-      // ==============================
-      const snapshotClientes = await firebase
+      const snapshot = await firebase
         .database()
         .ref('cliente')
         .once('value');
 
-      if (snapshotClientes.exists()) {
-        const clientes = snapshotClientes.val();
+      if (snapshot.exists()) {
+        const clientes = snapshot.val();
 
         for (let key in clientes) {
           const cliente = clientes[key];
@@ -62,16 +34,18 @@ class Login extends React.Component {
             cliente.nome.toLowerCase() === nome &&
             cliente.senha === senha
           ) {
-            alert('Login CLIENTE realizado!');
-            this.props.navigation.navigate('Home');
+            if (nome.includes('barbeiro')) {
+              alert('Login BARBEIRO realizado!');
+              this.props.navigation.navigate('Barbeiro');
+            } else {
+              alert('Login CLIENTE realizado!');
+              this.props.navigation.navigate('Home');
+            }
             return;
           }
         }
       }
 
-      // ==============================
-      // 3️⃣ NÃO ACHOU NINGUÉM
-      // ==============================
       alert('Usuário não encontrado!');
     } catch (error) {
       alert('Erro ao conectar com Firebase');
