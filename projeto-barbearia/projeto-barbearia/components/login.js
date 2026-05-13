@@ -1,6 +1,8 @@
+// login.js
 import * as React from 'react';
-import { TextInput, Text, View, StyleSheet, TouchableHighlight } from 'react-native';
+import { TextInput, Text, View, TouchableOpacity, ScrollView } from 'react-native';
 import firebase from '../config/config';
+import { estilosGlobais, cores } from './Estilos';
 
 class Login extends React.Component {
   constructor(props) {
@@ -29,7 +31,7 @@ class Login extends React.Component {
 
         for (let key in clientes) {
           const cliente = clientes[key];
-
+          if (cliente.ativo === false) continue; // pula clientes inativos
           if (
             cliente.nome.toLowerCase() === nome &&
             cliente.senha === senha
@@ -55,51 +57,63 @@ class Login extends React.Component {
 
   render() {
     return (
-      <View>
-        <TextInput
-          style={estilos.input}
-          placeholder="Nome"
-          onChangeText={(t) => (this.nome = t)}
-        />
-        <TextInput
-          style={estilos.input}
-          placeholder="Senha"
-          secureTextEntry
-          onChangeText={(t) => (this.senha = t)}
-        />
-        <TouchableHighlight
-          style={estilos.botao}
+      <ScrollView
+        contentContainerStyle={estilosGlobais.telaRolavel}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Cabeçalho */}
+        <Text style={estilosGlobais.titulo}>💈 Entrar</Text>
+        <Text style={estilosGlobais.subtitulo}>
+          Acesse sua conta para continuar
+        </Text>
+
+        {/* Campo Nome */}
+        <View style={estilosGlobais.campoGrupo}>
+          <Text style={estilosGlobais.label}>Nome</Text>
+          <TextInput
+            style={estilosGlobais.input}
+            placeholder="Digite seu nome"
+            placeholderTextColor={cores.textoSuave}
+            autoCapitalize="none"
+            onChangeText={(t) => (this.nome = t)}
+          />
+        </View>
+
+        {/* Campo Senha */}
+        <View style={estilosGlobais.campoGrupo}>
+          <Text style={estilosGlobais.label}>Senha</Text>
+          <TextInput
+            style={estilosGlobais.input}
+            placeholder="Digite sua senha"
+            placeholderTextColor={cores.textoSuave}
+            secureTextEntry
+            onChangeText={(t) => (this.senha = t)}
+          />
+        </View>
+
+        {/* Botão Entrar */}
+        <TouchableOpacity
+          style={[estilosGlobais.botaoPrimario, { marginTop: 24 }]}
           onPress={() => this.login()}
         >
-          <Text style={estilos.txtBotao}>Entrar</Text>
-        </TouchableHighlight>
-      </View>
+          <Text style={estilosGlobais.textoBotao}>Entrar</Text>
+        </TouchableOpacity>
+
+        {/* Divisor */}
+        <View style={estilosGlobais.divisor} />
+
+        {/* Link para cadastro */}
+        <TouchableOpacity
+          style={estilosGlobais.botaoOutline}
+          onPress={() => this.props.navigation.navigate('Cadastrar')}
+        >
+          <Text style={estilosGlobais.textoBotaoOutline}>
+            Não tem conta? Cadastre-se
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
     );
   }
 }
-
-const estilos = StyleSheet.create({
-  txtBotao: {
-    fontSize: 25,
-    alignSelf: 'center',
-  },
-  botao: {
-    height: 50,
-    borderWidth: 1,
-    margin: 10,
-    borderRadius: 8,
-    padding: 5,
-    justifyContent: 'center',
-    backgroundColor: '#00FFFF',
-  },
-  input: {
-    height: 50,
-    fontSize: 25,
-    borderWidth: 1,
-    margin: 10,
-    borderRadius: 8,
-    paddingLeft: 10,
-  },
-});
 
 export default Login;

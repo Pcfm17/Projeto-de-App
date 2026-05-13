@@ -20,6 +20,12 @@ import { Ionicons } from '@expo/vector-icons';
 import SalvarItens from './components/SalvarItens';
 import Login from './components/login';
 
+import RecuperarDados from './components/RecuperarDados';
+import AtualizarDados from './components/Atualizardados';
+import RemoverDados from './components/Removerdados';
+
+import SensorMovimento from './components/Sensormovimento';
+
 const Navegacao = createBottomTabNavigator();
 
 // Criando os navegadores — obrigatório antes de usar dentro das funções
@@ -136,25 +142,30 @@ const temas = {
 // ─────────────────────────────────────────
 
 function CardServico({ item, tema }) {
-  // tema padrão caso esqueça de passar no futuro
-  const temaSeguro = tema || {
-    fundo: '#fff',
-    texto: '#000',
-    botao: '#2e7d32',
-  };
-
   return (
-    <View style={[styles.card, { backgroundColor: temaSeguro.fundo }]}>
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: tema.fundo,
+          borderColor: tema.texto,
+        },
+      ]}>
       <Image source={{ uri: item.imagem }} style={styles.imagem} />
 
       <View style={styles.info}>
-        <Text style={[styles.nome, { color: temaSeguro.texto }]}>
-          {item.nome}
+        <Text style={[styles.nome, { color: tema.texto }]}>{item.nome}</Text>
+
+        <Text style={{ color: tema.texto }}>{item.descricao}</Text>
+
+        <Text
+          style={{
+            color: tema.botao,
+            marginTop: 5,
+            fontWeight: 'bold',
+          }}>
+          {item.preco}
         </Text>
-
-        <Text style={{ color: temaSeguro.texto }}>{item.descricao}</Text>
-
-        <Text style={{ color: temaSeguro.botao }}>{item.preco}</Text>
       </View>
     </View>
   );
@@ -240,10 +251,12 @@ function TelaGeral({ navigation, tema }) {
   //O que você acha que o ... faz aqui? O ... se chama spread operator. Ele "espalha" os itens de um array dentro de outro
   return (
     <FlatList
+      style={{ backgroundColor: tema.fundo }}
+      contentContainerStyle={{ paddingBottom: 20 }}
       data={[...servicosFemininos, ...servicosMasculinos]}
       // index.toString() pois os ids de femininos e masculinos se repetem (1,2,3...)
       keyExtractor={(item, index) => index.toString()}
-      renderItem={({ item }) => <CardServico item={item} />}
+      renderItem={({ item }) => <CardServico item={item} tema={tema} />}
       // ListFooterComponent aparece depois do último item da lista
       ListFooterComponent={
         <TouchableOpacity onPress={goToDetails} style={styles.botaoAgendar}>
@@ -262,7 +275,7 @@ function TelaFeminina({ navigation, tema }) {
       // keyExtractor dá uma identidade única para cada item
       // o React usa isso para saber qual item atualizar sem re-renderizar a lista toda
       keyExtractor={(item) => item.id} //Ele serve pra dar uma identidade única pra cada item da lista. O React precisa disso pra saber qual item atualizar quando algo mudar, sem precisar re-renderizar a lista inteira. É como um CPF de cada card.
-      renderItem={({ item }) => <CardServico item={item} />} //Ele é responsável por desenhar cada item da lista. Pra cada objeto dentro do data, o renderItem chama o CardServico passando aquele objeto como prop item. O id não filtra nada aqui — a FlatList já sabe quais são os itens femininos porque o data recebe servicosFemininos.
+      renderItem={({ item }) => <CardServico item={item} tema={tema} />} //Ele é responsável por desenhar cada item da lista. Pra cada objeto dentro do data, o renderItem chama o CardServico passando aquele objeto como prop item. O id não filtra nada aqui — a FlatList já sabe quais são os itens femininos porque o data recebe servicosFemininos.
     />
   );
 }
@@ -273,7 +286,7 @@ function TelaMasculino({ navigation, tema }) {
     <FlatList
       data={servicosMasculinos} //é a lista de dados que a FlatList vai usar
       keyExtractor={(item) => item.id} //Ele serve pra dar uma identidade única pra cada item da lista. O React precisa disso pra saber qual item atualizar quando algo mudar, sem precisar re-renderizar a lista inteira. É como um CPF de cada card.
-      renderItem={({ item }) => <CardServico item={item} />} //Ele é responsável por desenhar cada item da lista. Pra cada objeto dentro do data, o renderItem chama o CardServico passando aquele objeto como prop item. O id não filtra nada aqui — a FlatList já sabe quais são os itens femininos porque o data recebe servicosFemininos.
+      renderItem={({ item }) => <CardServico item={item} tema={tema} />} //Ele é responsável por desenhar cada item da lista. Pra cada objeto dentro do data, o renderItem chama o CardServico passando aquele objeto como prop item. O id não filtra nada aqui — a FlatList já sabe quais são os itens femininos porque o data recebe servicosFemininos.
     />
   );
 }
@@ -293,7 +306,13 @@ function TelaTipos({ navigation, tema }) {
       screenOptions={({ route }) => ({
         tabBarActiveTintColor: tema.botao,
         tabBarInactiveTintColor: tema.texto,
-        tabBarStyle: { backgroundColor: tema.fundo },
+        tabBarStyle: {
+          backgroundColor: tema.fundo,
+          borderTopColor: tema.texto,
+        },
+        sceneStyle: {
+          backgroundColor: tema.fundo,
+        },
 
         tabBarIcon: ({ color, size }) => {
           let iconName;
@@ -325,17 +344,87 @@ function TelaTipos({ navigation, tema }) {
 // ─────────────────────────────────────────
 
 function TelaAvaliacao({ navigation, tema }) {
+  const [nome, setNome] = useState('');
+  const [nota, setNota] = useState('');
+  const [comentario, setComentario] = useState('');
+
+  async function salvarAvaliacao() {
+    if (nome.trim() === '' || nota.trim() === '' || comentario.trim() === '') {
+      Alert.alert('Erro', 'Preencha todos os campos!');
+      return;
+    }
+
+    if (Number(nota) < 1 || Number(nota) > 5) {
+      Alert.alert('Erro', 'A nota deve ser entre 1 e 5!');
+      return;
+    }
+
+    try {
+      await firebase.database().ref('avaliacoes').push({
+        nome: nome.trim(),
+        nota: nota.trim(),
+        comentario: comentario.trim(),
+      });
+
+      Alert.alert('Sucesso', 'Avaliação enviada com sucesso!');
+      setNome('');
+      setNota('');
+      setComentario('');
+    } catch (error) {
+      Alert.alert('Erro', 'Erro ao salvar avaliação.');
+      console.log(error);
+    }
+  }
+
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: tema.fundo,
-        justifyContent: 'center',
-        alignItems: 'center',
-      }}>
-      <Text style={{ color: tema.texto, fontSize: 18 }}>
-        Em breve você poderá avaliar nossos serviços ⭐
+    <View style={{ flex: 1, backgroundColor: tema.fundo, padding: 20 }}>
+      <Text style={{ color: tema.texto, fontSize: 26, fontWeight: 'bold' }}>
+        ⭐ Avaliação
       </Text>
+
+      <Text style={{ color: tema.texto, marginVertical: 15 }}>
+        Conte como foi sua experiência.
+      </Text>
+
+      <TextInput
+        placeholder="Seu nome"
+        placeholderTextColor={tema.texto}
+        value={nome}
+        onChangeText={setNome}
+        style={[styles.input, { borderColor: tema.texto, color: tema.texto }]}
+      />
+
+      <TextInput
+        placeholder="Nota de 1 a 5"
+        placeholderTextColor={tema.texto}
+        value={nota}
+        onChangeText={setNota}
+        keyboardType="numeric"
+        style={[styles.input, { borderColor: tema.texto, color: tema.texto }]}
+      />
+
+      <TextInput
+        placeholder="Comentário"
+        placeholderTextColor={tema.texto}
+        value={comentario}
+        onChangeText={setComentario}
+        multiline
+        style={[
+          styles.input,
+          {
+            borderColor: tema.texto,
+            color: tema.texto,
+            height: 120,
+            textAlignVertical: 'top',
+          },
+        ]}
+      />
+
+      <TouchableOpacity
+        style={[styles.botaoConfirmar, { backgroundColor: tema.botao }]}
+        onPress={salvarAvaliacao}>
+        <Text style={styles.textoBotaoConfirmar}>Enviar avaliação</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -348,11 +437,20 @@ function TelaAvaliacao({ navigation, tema }) {
 // ─────────────────────────────────────────
 
 function TelaDia({ navigation, tema }) {
-  const dias = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+  const dias = [
+    'Segunda-feira',
+    'Terça-feira',
+    'Quarta-feira',
+    'Quinta-feira',
+    'Sexta-feira',
+    'Sábado',
+  ];
 
   return (
     <View style={{ flex: 1, backgroundColor: tema.fundo }}>
-      <Text style={[agendaStyles.titulo, { color: tema.texto }]}>Escolha o dia</Text>
+      <Text style={[agendaStyles.titulo, { color: tema.texto }]}>
+        Escolha o dia
+      </Text>
       <FlatList
         data={dias}
         keyExtractor={(item) => item}
@@ -360,9 +458,12 @@ function TelaDia({ navigation, tema }) {
           <TouchableOpacity
             style={[agendaStyles.card, { backgroundColor: tema.botao }]}
             // Passa o dia selecionado como parâmetro para a aba Hora
-            onPress={() => navigation.navigate('Hora', { diaSelecionado: item })}
-          >
-            <Text style={[agendaStyles.textoCard, { color: '#fff' }]}>{item}</Text>
+            onPress={() =>
+              navigation.navigate('Hora', { diaSelecionado: item })
+            }>
+            <Text style={[agendaStyles.textoCard, { color: '#fff' }]}>
+              {item}
+            </Text>
           </TouchableOpacity>
         )}
       />
@@ -371,14 +472,25 @@ function TelaDia({ navigation, tema }) {
 }
 
 function TelaHorario({ navigation, route, tema }) {
-  const horarios = ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+  const horarios = [
+    '09:00',
+    '10:00',
+    '11:00',
+    '13:00',
+    '14:00',
+    '15:00',
+    '16:00',
+    '17:00',
+  ];
 
   // Recebe o dia que foi selecionado na TelaDia
   const diaSelecionado = route.params?.diaSelecionado;
 
   return (
     <View style={{ flex: 1, backgroundColor: tema.fundo }}>
-      <Text style={[agendaStyles.titulo, { color: tema.texto }]}>Escolha o horário</Text>
+      <Text style={[agendaStyles.titulo, { color: tema.texto }]}>
+        Escolha o horário
+      </Text>
       <FlatList
         data={horarios}
         keyExtractor={(item) => item}
@@ -386,9 +498,15 @@ function TelaHorario({ navigation, route, tema }) {
           <TouchableOpacity
             style={[agendaStyles.card, { backgroundColor: tema.botao }]}
             // Passa o dia e o horário selecionado para TelaResultado
-            onPress={() => navigation.navigate('Resultado', { diaSelecionado, horarioSelecionado: item })}
-          >
-            <Text style={[agendaStyles.textoCard, { color: '#fff' }]}>{item}</Text>
+            onPress={() =>
+              navigation.navigate('Resultado', {
+                diaSelecionado,
+                horarioSelecionado: item,
+              })
+            }>
+            <Text style={[agendaStyles.textoCard, { color: '#fff' }]}>
+              {item}
+            </Text>
           </TouchableOpacity>
         )}
       />
@@ -454,9 +572,21 @@ function TelaResultado({ navigation, route, tema }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: tema.fundo, padding: 20 }}>
-      <Text style={{ color: tema.texto, fontSize: 22, fontWeight: 'bold', marginBottom: 20 }}>🎉 Resumo</Text>
-      <Text style={{ color: tema.texto, fontSize: 16 }}>📅 Dia: {diaSelecionado || 'Não selecionado'}</Text>
-      <Text style={{ color: tema.texto, fontSize: 16, marginBottom: 30 }}>🕐 Horário: {horarioSelecionado || 'Não selecionado'}</Text>
+      <Text
+        style={{
+          color: tema.texto,
+          fontSize: 22,
+          fontWeight: 'bold',
+          marginBottom: 20,
+        }}>
+        🎉 Resumo
+      </Text>
+      <Text style={{ color: tema.texto, fontSize: 16 }}>
+        📅 Dia: {diaSelecionado || 'Não selecionado'}
+      </Text>
+      <Text style={{ color: tema.texto, fontSize: 16, marginBottom: 30 }}>
+        🕐 Horário: {horarioSelecionado || 'Não selecionado'}
+      </Text>
       <TextInput
         placeholder="Nome"
         placeholderTextColor={tema.texto}
@@ -474,20 +604,20 @@ function TelaResultado({ navigation, route, tema }) {
       />
       <TouchableOpacity
         style={[styles.botaoConfirmar, { backgroundColor: tema.botao }]}
-        onPress={confirmarAgendamento}
-      >
+        onPress={confirmarAgendamento}>
         <Text style={styles.textoBotaoConfirmar}>Confirmar agendamento</Text>
       </TouchableOpacity>
       <TouchableOpacity
-        style={[styles.botaoCadastrar, { backgroundColor: '#9b59b6', marginTop: 10 }]}
-        onPress={() => navigation.navigate('Cadastrar')}
-      >
+        style={[
+          styles.botaoCadastrar,
+          { backgroundColor: '#9b59b6', marginTop: 10 },
+        ]}
+        onPress={() => navigation.navigate('Cadastrar')}>
         <Text style={styles.textoBotaoCadastrar}>Fazer cadastro</Text>
       </TouchableOpacity>
     </View>
   );
 }
-
 
 // ─────────────────────────────────────────
 // TELA AGENDAMENTO — TAB NAVIGATOR
@@ -503,19 +633,32 @@ function TelaAgendamento({ navigation, tema }) {
       screenOptions={({ route }) => ({
         tabBarActiveTintColor: tema.botao,
         tabBarInactiveTintColor: tema.texto,
-        tabBarStyle: { backgroundColor: tema.fundo },
+        tabBarStyle: {
+          backgroundColor: tema.fundo,
+          borderTopColor: tema.texto,
+        },
+
+        sceneStyle: {
+          backgroundColor: tema.fundo,
+        },
         tabBarIcon: ({ color, size }) => {
           let iconName;
           if (route.name === 'Dia') iconName = 'calendar-outline';
           else if (route.name === 'Hora') iconName = 'time-outline';
-          else if (route.name === 'Resultado') iconName = 'checkmark-circle-outline';
+          else if (route.name === 'Resultado')
+            iconName = 'checkmark-circle-outline';
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-      })}
-    >
-      <Tab.Screen name="Dia">{(props) => <TelaDia {...props} tema={tema} />}</Tab.Screen>
-      <Tab.Screen name="Hora">{(props) => <TelaHorario {...props} tema={tema} />}</Tab.Screen>
-      <Tab.Screen name="Resultado">{(props) => <TelaResultado {...props} tema={tema} />}</Tab.Screen>
+      })}>
+      <Tab.Screen name="Dia">
+        {(props) => <TelaDia {...props} tema={tema} />}
+      </Tab.Screen>
+      <Tab.Screen name="Hora">
+        {(props) => <TelaHorario {...props} tema={tema} />}
+      </Tab.Screen>
+      <Tab.Screen name="Resultado">
+        {(props) => <TelaResultado {...props} tema={tema} />}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 }
@@ -545,7 +688,13 @@ function TelaAdm({ navigation, tema }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: tema.fundo, padding: 20 }}>
-      <Text style={{ color: tema.texto, fontSize: 22, fontWeight: 'bold', marginBottom: 20 }}>
+      <Text
+        style={{
+          color: tema.texto,
+          fontSize: 22,
+          fontWeight: 'bold',
+          marginBottom: 20,
+        }}>
         💈 Agendamentos
       </Text>
 
@@ -556,13 +705,16 @@ function TelaAdm({ navigation, tema }) {
           data={agendamentos}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <View style={{
-              backgroundColor: tema.botao,
-              padding: 15,
-              borderRadius: 10,
-              marginBottom: 12,
-            }}>
-              <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>👤 {item.nomeCliente}</Text>
+            <View
+              style={{
+                backgroundColor: tema.botao,
+                padding: 15,
+                borderRadius: 10,
+                marginBottom: 12,
+              }}>
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>
+                👤 {item.nomeCliente}
+              </Text>
               <Text style={{ color: '#fff' }}>📅 {item.dia}</Text>
               <Text style={{ color: '#fff' }}>🕐 {item.horario}</Text>
             </View>
@@ -577,21 +729,51 @@ function TelaAdm({ navigation, tema }) {
 function TelaConfiguracao({ navigation, tema, setTema }) {
   return (
     <View style={[styles.container, { backgroundColor: tema.fundo }]}>
-      <Text style={[styles.tituloTema, { color: tema.texto }]}>Configurações</Text>
-      <Text style={[styles.infoTema, { color: tema.texto, marginBottom: 10 }]}>Escolha um tema:</Text>
+      <Text style={[styles.tituloTema, { color: tema.texto }]}>
+        Configurações
+      </Text>
+
+      <Text style={[styles.infoTema, { color: tema.texto, marginBottom: 10 }]}>
+        Escolha um tema:
+      </Text>
+
       {Object.keys(temas).map((nomeTema) => (
         <TouchableOpacity
           key={nomeTema}
-          style={[styles.btn, { backgroundColor: temas[nomeTema].botao, marginVertical: 5 }]}
-          onPress={() => setTema(temas[nomeTema])}
-        >
+          style={[
+            styles.btn,
+            { backgroundColor: temas[nomeTema].botao, marginVertical: 5 },
+          ]}
+          onPress={() => setTema(temas[nomeTema])}>
           <Text style={styles.btnTxt}>{nomeTema.toUpperCase()}</Text>
         </TouchableOpacity>
       ))}
+
+      <Text style={[styles.infoTema, { color: tema.texto, marginTop: 20 }]}>
+        Gerenciar clientes:
+      </Text>
+
+      <TouchableOpacity
+        style={[styles.btn, { backgroundColor: '#2980b9' }]}
+        onPress={() => navigation.navigate('RecuperarDados')}>
+        <Text style={styles.btnTxt}>🔍 Recuperar Dados</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.btn, { backgroundColor: '#d69e2e' }]}
+        onPress={() => navigation.navigate('AtualizarDados')}>
+        <Text style={styles.btnTxt}>✏️ Atualizar Dados</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.btn, { backgroundColor: '#e53e3e' }]}
+        onPress={() => navigation.navigate('RemoverDados')}>
+        <Text style={styles.btnTxt}>🗑️ Remover Cliente</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity
         style={[styles.btn, { backgroundColor: '#9b59b6', marginTop: 20 }]}
-        onPress={() => navigation.navigate('Home')}
-      >
+        onPress={() => navigation.navigate('Home')}>
         <Text style={styles.btnTxt}>Voltar ao Início</Text>
       </TouchableOpacity>
     </View>
@@ -619,23 +801,49 @@ export default function App() {
           drawerLabelStyle: { color: tema.texto },
           headerStyle: { backgroundColor: tema.fundo },
           headerTintColor: tema.texto,
-        }}
-      >
-        <Drawer.Screen name="Home">{(props) => <TelaPrincipal {...props} tema={tema} />}</Drawer.Screen>
-        <Drawer.Screen name="Tipos de serviço">{(props) => <TelaTipos {...props} tema={tema} />}</Drawer.Screen>
-        <Drawer.Screen name="Avaliação">{(props) => <TelaAvaliacao {...props} tema={tema} />}</Drawer.Screen>
-        <Drawer.Screen name="Agendamento">{(props) => <TelaAgendamento {...props} tema={tema} />}</Drawer.Screen>
+        }}>
+        <Drawer.Screen name="Home">
+          {(props) => <TelaPrincipal {...props} tema={tema} />}
+        </Drawer.Screen>
+        <Drawer.Screen name="Tipos de serviço">
+          {(props) => <TelaTipos {...props} tema={tema} />}
+        </Drawer.Screen>
+        <Drawer.Screen name="Avaliação">
+          {(props) => <TelaAvaliacao {...props} tema={tema} />}
+        </Drawer.Screen>
+        <Drawer.Screen name="Agendamento">
+          {(props) => <TelaAgendamento {...props} tema={tema} />}
+        </Drawer.Screen>
         <Drawer.Screen name="Login" component={Login} />
         <Drawer.Screen name="Cadastrar" component={SalvarItens} />
+        <Drawer.Screen name="Sensor de Movimento" component={SensorMovimento} />
         <Drawer.Screen name="Configuração">
-          {(props) => <TelaConfiguracao {...props} tema={tema} setTema={setTema} />}
+          {(props) => (
+            <TelaConfiguracao {...props} tema={tema} setTema={setTema} />
+          )}
         </Drawer.Screen>
+        <Drawer.Screen
+          name="RecuperarDados"
+          options={{ drawerItemStyle: { display: 'none' } }}
+          component={RecuperarDados}
+        />
+
+        <Drawer.Screen
+          name="AtualizarDados"
+          options={{ drawerItemStyle: { display: 'none' } }}
+          component={AtualizarDados}
+        />
+
+        <Drawer.Screen
+          name="RemoverDados"
+          options={{ drawerItemStyle: { display: 'none' } }}
+          component={RemoverDados}
+        />
 
         {/* Tela do barbeiro — escondida do menu, acessível só após login */}
         <Drawer.Screen
           name="Barbeiro"
-          options={{ drawerItemStyle: { display: 'none' } }}
-        >
+          options={{ drawerItemStyle: { display: 'none' } }}>
           {(props) => <TelaAdm {...props} tema={tema} />}
         </Drawer.Screen>
       </Drawer.Navigator>
@@ -650,26 +858,65 @@ export default function App() {
 // ─────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  card: { marginHorizontal: 16, marginVertical: 8, borderRadius: 10, elevation: 3, overflow: 'hidden' },
+  card: {
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 10,
+    elevation: 3,
+    overflow: 'hidden',
+  },
   imagem: { width: '100%', height: 150 },
   info: { padding: 12 },
   nome: { fontSize: 16, fontWeight: 'bold' },
-  botaoAgendar: { margin: 16, padding: 12, backgroundColor: '#2e7d32', borderRadius: 8 },
+  botaoAgendar: {
+    margin: 16,
+    padding: 12,
+    backgroundColor: '#2e7d32',
+    borderRadius: 8,
+  },
   botaoAgendarTexto: { color: '#fff', textAlign: 'center', fontWeight: 'bold' },
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16, padding: 20 },
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+    padding: 20,
+  },
   tituloTema: { fontSize: 26, fontWeight: 'bold' },
   btn: { padding: 12, borderRadius: 8, width: '80%', alignItems: 'center' },
   btnTxt: { color: 'white', fontSize: 16, fontWeight: 'bold' },
-  input: { borderWidth: 1, padding: 10, borderRadius: 8, marginBottom: 10, fontSize: 16 },
+  input: {
+    borderWidth: 1,
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 10,
+    fontSize: 16,
+  },
   botaoConfirmar: { padding: 12, borderRadius: 8 },
-  textoBotaoConfirmar: { color: '#fff', textAlign: 'center', fontWeight: 'bold', fontSize: 18 },
+  textoBotaoConfirmar: {
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: 'bold',
+    fontSize: 18,
+  },
   botaoCadastrar: { padding: 12, borderRadius: 8 },
-  textoBotaoCadastrar: { color: '#fff', textAlign: 'center', fontWeight: 'bold', fontSize: 18 },
+  textoBotaoCadastrar: {
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: 'bold',
+    fontSize: 18,
+  },
 });
 //tela resultado
 const agendaStyles = StyleSheet.create({
   titulo: { fontSize: 22, fontWeight: 'bold', margin: 20 },
-  card: { padding: 15, borderRadius: 10, marginHorizontal: 20, marginBottom: 15, alignItems: 'center' },
+  card: {
+    padding: 15,
+    borderRadius: 10,
+    marginHorizontal: 20,
+    marginBottom: 15,
+    alignItems: 'center',
+  },
   textoCard: { fontSize: 18, fontWeight: 'bold' },
 });
 //OBS:
