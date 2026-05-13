@@ -363,3 +363,7 @@ npx expo start
 | ![sensor](./screenshots/sensor.png) | ![config](./screenshots/config.png) | ![barbeiro](./screenshots/barbeiro.png) |
 
 ---
+
+### Videos
+part1 = https://youtu.be/0KQ_RmLUQ-A
+part2 = https://youtu.be/DtM5XhiHi7I
