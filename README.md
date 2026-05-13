@@ -10,7 +10,7 @@ RA: 24.224.012-5
 
 ## 📋 Visão Geral e Requisitos
 
-O **BarberApp** é um aplicativo móvel completo para gerenciamento de uma barbearia/salão de beleza. A ideia surgiu da necessidade de digitalizar a experiência do cliente, permitindo que ele visualize os serviços disponíveis, realize agendamentos, deixe avaliações e gerencie sua conta — tudo pelo celular.
+O **BarberApp** é um aplicativo móvel completo para gerenciamento de uma barbearia/salão de beleza. A ideia surgiu da necessidade de digitalizar a experiência do cliente, permitindo que ele visualize os serviços disponíveis, realize agendamentos, deixe avaliações e gerencie sua conta, tudo pelo celular.
 
 ### Motivação
 
