@@ -352,18 +352,5 @@ npx expo start
 
 ## 📸 Demonstração
 
-> _Adicione aqui capturas de tela ou um GIF do app funcionando._
-
-| Home | Serviços | Agendamento |
-|------|----------|-------------|
-| ![home](./screenshots/home.png) | ![servicos](./screenshots/servicos.png) | ![agendamento](./screenshots/agendamento.png) |
-
-| Sensor | Configurações | Painel Barbeiro |
-|--------|---------------|-----------------|
-| ![sensor](./screenshots/sensor.png) | ![config](./screenshots/config.png) | ![barbeiro](./screenshots/barbeiro.png) |
-
----
-
-### Videos
 part1 = https://youtu.be/0KQ_RmLUQ-A
 part2 = https://youtu.be/DtM5XhiHi7I
